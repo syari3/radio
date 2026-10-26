@@ -22,10 +22,10 @@ button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:11px 14p
 .secondary{background:#f8e8ef;color:var(--pink-dark)}
 button:focus-visible,.card:focus-visible{outline:3px solid #2c7be5;outline-offset:3px}
 #cards{display:flex;flex-direction:column;gap:9px}
-.card{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:15px;padding:12px;min-height:74px;box-shadow:0 2px 7px #4b2d3c08;cursor:grab;user-select:none}
-.card.dragging{opacity:.42;border:2px dashed var(--pink)}
+.card{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:15px;padding:12px;min-height:74px;box-shadow:0 2px 7px #4b2d3c08;user-select:none}
+.card.dragging{opacity:.5;border:2px dashed var(--pink);transform:scale(.99)}
 .card.over{border-color:var(--pink);background:#fff4f8}
-.handle{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#fbe8f0;color:var(--pink-dark);font-size:1.2rem}
+.handle{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#fbe8f0;color:var(--pink-dark);font-size:1.2rem;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
 .name{font-weight:800;line-height:1.35}
 .note{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.4}
 .moves{display:flex;flex-direction:column;gap:4px}
@@ -73,23 +73,39 @@ const exercises = [
  {id:13,name:"深呼吸",note:"体をゆっくりと平常の状態に戻す"}
 ];
 const cardsEl=document.querySelector("#cards"), resultEl=document.querySelector("#result");
-let order=[], draggedId=null;
+let order=[], draggedId=null, pointerDragId=null, pointerTargetId=null;
 function shuffleArray(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function render(){
  cardsEl.innerHTML="";
  order.forEach((id,index)=>{
   const e=exercises.find(x=>x.id===id), card=document.createElement("article");
-  card.className="card";card.draggable=true;card.tabIndex=0;card.dataset.id=id;
+  card.className="card";card.draggable=false;card.tabIndex=0;card.dataset.id=id;
   card.innerHTML='<div class="handle" aria-hidden="true">⠿</div><div><div class="name"></div><div class="note"></div></div><div class="moves"><button aria-label="上へ移動">▲</button><button aria-label="下へ移動">▼</button></div>';
   card.querySelector(".name").textContent=e.name;card.querySelector(".note").textContent=e.note;
   const [up,down]=card.querySelectorAll("button");
   up.disabled=index===0;down.disabled=index===order.length-1;
   up.addEventListener("click",()=>move(index,index-1));down.addEventListener("click",()=>move(index,index+1));
-  card.addEventListener("dragstart",ev=>{draggedId=id;card.classList.add("dragging");ev.dataTransfer.effectAllowed="move";ev.dataTransfer.setData("text/plain",String(id))});
-  card.addEventListener("dragend",()=>{draggedId=null;document.querySelectorAll(".card").forEach(c=>c.classList.remove("dragging","over"))});
-  card.addEventListener("dragover",ev=>{ev.preventDefault();card.classList.add("over");ev.dataTransfer.dropEffect="move"});
-  card.addEventListener("dragleave",()=>card.classList.remove("over"));
-  card.addEventListener("drop",ev=>{ev.preventDefault();card.classList.remove("over");const from=order.indexOf(Number(ev.dataTransfer.getData("text/plain"))||draggedId),to=order.indexOf(id);if(from>=0&&to>=0&&from!==to){const [v]=order.splice(from,1);order.splice(to,0,v);render();hideResult()}});
+  const handle=card.querySelector(".handle");
+  handle.addEventListener("pointerdown",ev=>{
+   if(ev.pointerType==="mouse"&&ev.button!==0)return;
+   ev.preventDefault();pointerDragId=id;pointerTargetId=id;card.classList.add("dragging");
+   handle.setPointerCapture(ev.pointerId);
+  });
+  handle.addEventListener("pointermove",ev=>{
+   if(pointerDragId===null)return;
+   const target=document.elementFromPoint(ev.clientX,ev.clientY)?.closest(".card");
+   document.querySelectorAll(".card").forEach(c=>c.classList.toggle("over",!!target&&c===target&&Number(c.dataset.id)!==pointerDragId));
+   if(target)pointerTargetId=Number(target.dataset.id);
+  });
+  const finishDrag=()=>{
+   if(pointerDragId===null)return;
+   const from=order.indexOf(pointerDragId),to=order.indexOf(pointerTargetId);
+   document.querySelectorAll(".card").forEach(c=>c.classList.remove("dragging","over"));
+   pointerDragId=null;pointerTargetId=null;
+   if(from>=0&&to>=0&&from!==to){const [v]=order.splice(from,1);order.splice(to,0,v);render();hideResult()}
+  };
+  handle.addEventListener("pointerup",finishDrag);
+  handle.addEventListener("pointercancel",finishDrag);
   cardsEl.appendChild(card);
  });
 }
