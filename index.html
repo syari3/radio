@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#d85b91">
+<title>ラジオ体操第1｜順番チャレンジ</title>
+<style>
+:root{--pink:#d85b91;--pink-dark:#a72c63;--cream:#fffaf2;--ink:#332b32;--muted:#786c76;--line:#eadde4;--orange:#f39a37}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#fff3f8 0,#fffaf2 46%,#f1f8ff 100%);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
+header{padding:28px 18px 22px;text-align:center;background:var(--pink);color:#fff;border-radius:0 0 28px 28px;box-shadow:0 5px 18px #a72c6328}
+.eyebrow{font-size:.78rem;letter-spacing:.14em;opacity:.9}
+h1{font-size:clamp(1.45rem,5vw,2.1rem);margin:7px 0 6px}
+header p{margin:0;font-size:.93rem;opacity:.95}
+main{width:min(760px,100%);margin:0 auto;padding:18px 14px 44px}
+.panel{background:#ffffffd9;border:1px solid #fff;border-radius:20px;padding:16px;box-shadow:0 8px 25px #5930440d}
+.instructions{margin:0 0 14px;line-height:1.65;font-size:.93rem}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 15px}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:11px 14px;cursor:pointer;touch-action:manipulation}
+.primary{background:var(--pink);color:#fff;flex:1}
+.secondary{background:#f8e8ef;color:var(--pink-dark)}
+button:focus-visible,.card:focus-visible{outline:3px solid #2c7be5;outline-offset:3px}
+#cards{display:flex;flex-direction:column;gap:9px}
+.card{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:15px;padding:12px;min-height:74px;box-shadow:0 2px 7px #4b2d3c08;cursor:grab;user-select:none}
+.card.dragging{opacity:.42;border:2px dashed var(--pink)}
+.card.over{border-color:var(--pink);background:#fff4f8}
+.handle{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#fbe8f0;color:var(--pink-dark);font-size:1.2rem}
+.name{font-weight:800;line-height:1.35}
+.note{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.4}
+.moves{display:flex;flex-direction:column;gap:4px}
+.moves button{padding:3px 8px;background:#f5f0f3;color:#66535e;border-radius:7px;line-height:1.2}
+#result{display:none;margin-top:15px;padding:14px;border-radius:14px;background:#f0fbf4;border:1px solid #ccebd7;line-height:1.6}
+#result.bad{background:#fff5e8;border-color:#f5d5a6}
+footer{text-align:center;color:var(--muted);font-size:.78rem;margin-top:17px}
+@media(min-width:600px){main{padding-top:24px}.card{padding:13px 15px}}
+@media(prefers-reduced-motion:no-preference){.card{transition:background .12s,border-color .12s,transform .12s}}
+</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">PRACTICE MODE</div>
+<h1>ラジオ体操第1・順番チャレンジ</h1>
+<p>13枚のカードを、正しい順番に並べよう！</p>
+</header>
+<main>
+<section class="panel">
+<p class="instructions">カードをドラッグして移動しよう。スマホでは右側の <b>▲ ▼</b> ボタンでも並べ替えられるよ。順番が決まったら「答え合わせ」！</p>
+<div class="toolbar">
+<button class="primary" id="check">答え合わせ</button>
+<button class="secondary" id="shuffle">シャッフル</button>
+<button class="secondary" id="reset">最初から</button>
+</div>
+<div id="cards" aria-label="並べ替える運動カード"></div>
+<div id="result" role="status" aria-live="polite"></div>
+</section>
+<footer>ラジオ体操第1・立位｜練習用</footer>
+</main>
+<script>
+const exercises = [
+ {id:1,name:"伸びの運動",note:"背すじを伸ばし、良い運動姿勢をつくる"},
+ {id:2,name:"腕を振って脚を曲げ伸ばす運動",note:"脚を元気よく動かし、全身の血行を促す"},
+ {id:3,name:"腕を回す運動",note:"肩まわりの筋肉を柔軟に保つ"},
+ {id:4,name:"胸を反らす運動",note:"正しい姿勢をつくり、呼吸器官の働きを促進"},
+ {id:5,name:"体を横に曲げる運動",note:"脇腹の筋肉を伸ばす"},
+ {id:6,name:"体を前後に曲げる運動",note:"背・腹部の柔軟性を高め、腰への負担を軽くする"},
+ {id:7,name:"体をねじる運動",note:"背骨の動きを柔軟にし、良い姿勢をつくる"},
+ {id:8,name:"腕を上下に伸ばす運動",note:"素早い動作で瞬発力を向上させる"},
+ {id:9,name:"体を斜め下に曲げ胸を反らす運動",note:"背中〜脚の裏側を伸ばす"},
+ {id:10,name:"体を回す運動",note:"腰周辺の筋肉をほぐし、柔軟性を高める"},
+ {id:11,name:"両脚で跳ぶ運動",note:"リズミカルに跳び、全身の血行を促進"},
+ {id:12,name:"腕を振って脚を曲げ伸ばす運動",note:"整理運動として呼吸をととのえる"},
+ {id:13,name:"深呼吸",note:"体をゆっくりと平常の状態に戻す"}
+];
+const cardsEl=document.querySelector("#cards"), resultEl=document.querySelector("#result");
+let order=[], draggedId=null;
+function shuffleArray(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function render(){
+ cardsEl.innerHTML="";
+ order.forEach((id,index)=>{
+  const e=exercises.find(x=>x.id===id), card=document.createElement("article");
+  card.className="card";card.draggable=true;card.tabIndex=0;card.dataset.id=id;
+  card.innerHTML='<div class="handle" aria-hidden="true">⠿</div><div><div class="name"></div><div class="note"></div></div><div class="moves"><button aria-label="上へ移動">▲</button><button aria-label="下へ移動">▼</button></div>';
+  card.querySelector(".name").textContent=e.name;card.querySelector(".note").textContent=e.note;
+  const [up,down]=card.querySelectorAll("button");
+  up.disabled=index===0;down.disabled=index===order.length-1;
+  up.addEventListener("click",()=>move(index,index-1));down.addEventListener("click",()=>move(index,index+1));
+  card.addEventListener("dragstart",ev=>{draggedId=id;card.classList.add("dragging");ev.dataTransfer.effectAllowed="move";ev.dataTransfer.setData("text/plain",String(id))});
+  card.addEventListener("dragend",()=>{draggedId=null;document.querySelectorAll(".card").forEach(c=>c.classList.remove("dragging","over"))});
+  card.addEventListener("dragover",ev=>{ev.preventDefault();card.classList.add("over");ev.dataTransfer.dropEffect="move"});
+  card.addEventListener("dragleave",()=>card.classList.remove("over"));
+  card.addEventListener("drop",ev=>{ev.preventDefault();card.classList.remove("over");const from=order.indexOf(Number(ev.dataTransfer.getData("text/plain"))||draggedId),to=order.indexOf(id);if(from>=0&&to>=0&&from!==to){const [v]=order.splice(from,1);order.splice(to,0,v);render();hideResult()}});
+  cardsEl.appendChild(card);
+ });
+}
+function move(from,to){if(to<0||to>=order.length)return;const [v]=order.splice(from,1);order.splice(to,0,v);render();hideResult()}
+function hideResult(){resultEl.style.display="none";resultEl.classList.remove("bad")}
+function check(){const correct=order.filter((id,i)=>id===i+1).length;resultEl.style.display="block";resultEl.classList.toggle("bad",correct!==13);resultEl.innerHTML="";
+ const strong=document.createElement("strong");strong.textContent=correct===13?"🎉 全問正解！":"正しい位置にあるカード："+correct+" / 13";resultEl.appendChild(strong);
+ const p=document.createElement("p");p.style.margin="6px 0 0";p.textContent=correct===13?"完璧！もう一度シャッフルして挑戦してみよう。":"カードを動かして、もう一度挑戦してみよう！";resultEl.appendChild(p);
+}
+function fresh(shuffle){order=exercises.map(x=>x.id);if(shuffle)shuffleArray(order);render();hideResult()}
+document.querySelector("#check").addEventListener("click",check);
+document.querySelector("#shuffle").addEventListener("click",()=>fresh(true));
+document.querySelector("#reset").addEventListener("click",()=>fresh(false));
+fresh(true);
+</script>
+</body>
+</html>
